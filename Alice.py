@@ -14,7 +14,12 @@ polo = APIpoloniex(api_key, api_secret,3.0)
 
 ###Глобальные переменные
 pair = 'USDT_LTC'
-USDT = 0
+USDT = -1
+RSIchartLine = [30,70] #горизонтальные линии на графике
+TradeHistory = -1
+chart = -1
+current = -1
+
 NSMA=3   #SMA период
 NPriceChannel =50
 zoomX = 5
@@ -46,38 +51,71 @@ canvRSI.pack()
 label.pack(side="left")
 text1.pack(side="top",fill="both")
 
-RSIchartLine = [30,70]
-TradeHistory={}
-chart ={}
-current={}
-
 f = open('Configure.ini','r')
 orders = json.load(f)
 f.close
 
+def TradeHistoryNew():
+  global TradeHistory
+  time.sleep(0.2)
+  while chart == -1 :
+    TradeHistory_New = polo.returnTradeHistory(currencyPair=pair, start=int(time.time())  -3600 / 4 , end=time.time())  # История ордеров за последнии N мин
+    if TradeHistory_New != -1:  TradeHistory = TradeHistory_New
+  else:
+    TradeHistory_New = polo.returnTradeHistory(currencyPair=pair, start=int(time.time())  -3600 / 4 , end=time.time())  # История ордеров за последнии N мин
+    if TradeHistory_New != -1 :  TradeHistory = TradeHistory_New
+  return 
+
+# Поллучаем значения графика
+def chartNew():  
+  time.sleep(0.4)
+  global chart
+  while chart == -1 :
+    chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...
+    if chart_New != -1:  chart = chart_New  
+  else :
+    chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...
+    if chart_New != -1   :  chart = chart_New  
+  return 
+
+# получить текущее значения в паре  
+def currentTicker():
+  global current
+  while  current == -1:
+    currentNew = polo.returnTicker()         
+    if currentNew != -1: current = currentNew[pair]  
+  else:
+    currentNew = polo.returnTicker()     
+    if currentNew != -1  : current = currentNew[pair]  
+  return
+
+#Получить Баланс USDT
+def BalancesNew():
+  time.sleep(0.6)
+  global USDT
+  while  USDT == -1:    
+    USDTnew = polo.returnBalances() 
+    if USDTnew != -1 : USDT = float(USDTnew['USDT'])
+  else :
+    USDTnew = polo.returnBalances()     
+    if USDTnew != -1 : USDT = float(USDTnew['USDT'])
+  return
+
+
 def tick():
   """Обновление данных на бирже"""
-  global TradeHistory
-  TradeHistoryNew = polo.returnTradeHistory(currencyPair=pair, start=int(time.time())  -3600 / 4 , end=time.time())  # История ордеров за последнии N мин
-  if TradeHistoryNew != -1:  TradeHistory =TradeHistoryNew
   
-  global chart
-  chartNew = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...
-  if chartNew != -1:  chart =chartNew
+  threading.Thread(target = currentTicker).start()   
+  threading.Thread(target = TradeHistoryNew).start()     
+  threading.Thread(target = chartNew).start()  
+  threading.Thread(target = BalancesNew).start() 
   
-  global current
-  currentNew = polo.returnTicker()     # текущее значения в паре
-  if currentNew != -1: current = currentNew[pair]
+  #на первое включение
+  while (USDT == -1 or current == -1 or chart == -1 or TradeHistory == -1): time.sleep(0.1)
+
   lowestAsk =  float(current['lowestAsk'])    # могу купить
   highestBid = float(current['highestBid'])   # могу продать
-  
-  #Получить Баланс USDT
-  global USDT
-  USDTnew = polo.returnBalances() 
-  if USDTnew != -1 :    
-    USDT = float(USDTnew['USDT'])
-
-  
+    
   canv.delete("all")
   canvRSI.delete("all")
   #### отрисовка координатной сетки
@@ -96,7 +134,7 @@ def tick():
   ### ОТРИСОВИ
   #### отрисовка цены на графике
   delta24 = high24hr - low24hr
-  for i in range(1,len(chart) -NPriceChannel ):   
+  for i in range(1,len(chart) -NPriceChannel - 1 ):   
     canv.create_line(600 -i*zoomX, (high24hr - float(chart[-i]['close']))/ (delta24/300) 
                     ,600 -(i+1)*zoomX,(high24hr - float(chart[-i-1]['close']))/ (delta24/300),width=1,fill="#00B000" )
   ### end
@@ -142,7 +180,7 @@ def tick():
   #res['bet'].clear()  
   RSIcurrent = RSI(14,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
-  if RSIcurrent < 80 and float(USDT) > orders['lot'] :    
+  if  RSIcurrent < 80 and float(USDT) > orders['lot'] :    
     if orders['count'] == 0:     # первый вход
       orders['bet'][0] = lowestAsk
       orders['count'] +=1           
@@ -187,8 +225,8 @@ def tick():
                "\nBUY   :\t{:.8f} ".format(lowestAsk) +  
   	           "\nSELL  :\t{:.8f} ".format(highestBid) +
                "\nRefresh: " + time.strftime("%H:%M:%S")  )
-  label.after(3000, tick)  # следующий tick через 5 с
+  label.after(2000, tick)  # следующий tick через 5 с
 
-label.after(100, tick)
+label.after(1000, tick)
 root.mainloop()
     

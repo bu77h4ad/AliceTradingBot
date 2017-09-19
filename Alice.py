@@ -6,10 +6,8 @@ import time
 from indicators import *
 from APIpoloniex import *
 import os
+from API_KEY import *
 
-api_key = 'BL2HO7TZ-L4UN5JLU-IKL7E7O5-51RZI53K'
-api_secret = 'ef371b33fd0aa148439d97c310efc93bc717c7605009ba007a45650cf03617da97dfd06942fbfdd586a3f1c3ce9b54aeed9eb48cecaac8035821622fb8edaf7c'
-#polo = Poloniex(api_key, api_secret,3000)
 polo = APIpoloniex(api_key, api_secret,3.0)
 
 ###Глобальные переменные

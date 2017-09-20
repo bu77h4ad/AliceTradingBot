@@ -55,7 +55,7 @@ f.close
 
 def TradeHistoryNew():
   global TradeHistory
-  time.sleep(0.2)
+  time.sleep(0.3)
   while chart == -1 :
     TradeHistory_New = polo.returnTradeHistory(currencyPair=pair, start=int(time.time())  -3600 / 4 , end=time.time())  # История ордеров за последнии N мин
     if TradeHistory_New != -1:  TradeHistory = TradeHistory_New
@@ -66,7 +66,7 @@ def TradeHistoryNew():
 
 # Поллучаем значения графика
 def chartNew():  
-  time.sleep(0.4)
+  time.sleep(0.5)
   global chart
   while chart == -1 :
     chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...
@@ -76,20 +76,9 @@ def chartNew():
     if chart_New != -1   :  chart = chart_New  
   return 
 
-# получить текущее значения в паре  
-def currentTicker():
-  global current
-  while  current == -1:
-    currentNew = polo.returnTicker()         
-    if currentNew != -1: current = currentNew[pair]  
-  else:
-    currentNew = polo.returnTicker()     
-    if currentNew != -1  : current = currentNew[pair]  
-  return
-
 #Получить Баланс USDT
 def BalancesNew():
-  time.sleep(0.6)
+  time.sleep(0.9)
   global USDT
   while  USDT == -1:    
     USDTnew = polo.returnBalances() 
@@ -99,17 +88,30 @@ def BalancesNew():
     if USDTnew != -1 : USDT = float(USDTnew['USDT'])
   return
 
-
-def tick():
-  """Обновление данных на бирже"""
+# получить текущее значения в паре  
+def currentTicker():
+  time.sleep(1.3)
+  global current
+  while  current == -1:
+    currentNew = polo.returnTicker()         
+    if currentNew != -1: current = currentNew[pair]  
+  else:
+    currentNew = polo.returnTicker()     
+    if currentNew != -1  : current = currentNew[pair]  
+  return
   
-  threading.Thread(target = currentTicker).start()   
-  threading.Thread(target = TradeHistoryNew).start()     
+"""Обновление данных на бирже"""  
+def RefreshData():      
+  #threading.Thread(target = TradeHistoryNew).start()     
   threading.Thread(target = chartNew).start()  
   threading.Thread(target = BalancesNew).start() 
-  
+  threading.Thread(target = currentTicker).start()   
+  return
+
+def tick():
+
   #на первое включение
-  while (USDT == -1 or current == -1 or chart == -1 or TradeHistory == -1): time.sleep(0.1)
+  while (USDT == -1 or current == -1 or chart == -1 ) or threading.active_count() != 1 : time.sleep(0.1)
 
   lowestAsk =  float(current['lowestAsk'])    # могу купить
   highestBid = float(current['highestBid'])   # могу продать
@@ -215,16 +217,19 @@ def tick():
   canv.create_text(85,290,text="PriceChannel (" + str(NPriceChannel) + "): {:.8f}".format(PiceChannel(NPriceChannel,chart)['centerLine']) ,fill="#0094FF" )
   
   RSIchartLine[0]  
- # print('открытых ордеров :',len(OpenOrders) )
- # print (time.localtime(time.time() - 3600*5))
+  # print('открытых ордеров :',len(OpenOrders) )
+  # print (time.localtime(time.time() - 3600*5))
 
 
   time_var.set("TF  :\t{:.0f}".format(timeframe/60)+ " min    "+                
                "\nBUY   :\t{:.8f} ".format(lowestAsk) +  
   	           "\nSELL  :\t{:.8f} ".format(highestBid) +
                "\nRefresh: " + time.strftime("%H:%M:%S")  )
+
+  RefreshData()
   label.after(2000, tick)  # следующий tick через 5 с
 
-label.after(1000, tick)
+RefreshData()
+label.after(2000, tick)
 root.mainloop()
     

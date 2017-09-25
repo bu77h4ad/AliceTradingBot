@@ -7,9 +7,11 @@ from indicators import *
 from APIpoloniex import *
 import os
 from API_KEY import *
+import queue
 
 polo = APIpoloniex(api_key, api_secret,3.0)
 
+q = queue.Queue() #Очередь
 ###Глобальные переменные
 pair = 'USDT_LTC'
 USDT = -1
@@ -26,12 +28,13 @@ GMT= 0 * 3600 # Часовой пояс относительно гринвич�
 
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
-root.title("Trading Robot v1")
+root.title("Alice Trading Bot")
 root.geometry('650x470+100+100') # ширина=500, высота=400, x=300, y=200
 root.iconbitmap(default='chart.ico')
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
- 
+root.protocol('WM_DELETE_WINDOW', '') # обработчик закрытия окна
+
 fm = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
 m.add_cascade(label="File",menu=fm) #пункту располагается на основном меню (m)
 fm.add_command(label="Open...", command = '') #формируется список команд пункта меню
@@ -52,6 +55,16 @@ text1.pack(side="top",fill="both")
 f = open('Configure.ini','r')
 orders = json.load(f)
 f.close
+
+def mainThread():
+  while True:
+    try:
+      element = q.get_nowait()
+    except : # на случай ошибок или пустой очереди sys.exc_info()[0]
+      pass
+    else :   # если нет ошибок
+      if element[0] == 'BUY': orderBuy = polo.buy(pair, lowestAsk , orders['lot'] / lowestAsk)
+    time.sleep(0.1)
 
 def TradeHistoryNew():
   global TradeHistory
@@ -111,7 +124,7 @@ def RefreshData():
 def tick():
 
   #на первое включение
-  while (USDT == -1 or current == -1 or chart == -1 ) or threading.active_count() != 1 : time.sleep(0.1)
+  while (USDT == -1 or current == -1 or chart == -1 )  : time.sleep(0.1)
 
   lowestAsk =  float(current['lowestAsk'])    # могу купить
   highestBid = float(current['highestBid'])   # могу продать
@@ -227,9 +240,9 @@ def tick():
                "\nRefresh: " + time.strftime("%H:%M:%S")  )
 
   RefreshData()
-  label.after(2000, tick)  # следующий tick через 5 с
+  root.after(2000, tick)  # следующий tick через 5 с
 
 RefreshData()
-label.after(2000, tick)
+root.after(2000, tick)
 root.mainloop()
     

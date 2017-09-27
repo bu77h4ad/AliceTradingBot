@@ -13,6 +13,7 @@ polo = APIpoloniex(api_key, api_secret,3.0)
 
 q = queue.Queue() #Очередь
 ###Глобальные переменные
+_FINISH = False
 pair = 'USDT_LTC'
 USDT = -1
 RSIchartLine = [30,70] #горизонтальные линии на графике
@@ -33,7 +34,6 @@ root.geometry('650x470+100+100') # ширина=500, высота=400, x=300, y=
 root.iconbitmap(default='chart.ico')
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
-root.protocol('WM_DELETE_WINDOW', '') # обработчик закрытия окна
 
 fm = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
 m.add_cascade(label="File",menu=fm) #пункту располагается на основном меню (m)
@@ -56,70 +56,47 @@ f = open('Configure.ini','r')
 orders = json.load(f)
 f.close
 
-def mainThread():
-  while True:
-    try:
-      element = q.get_nowait()
-    except : # на случай ошибок или пустой очереди sys.exc_info()[0]
-      pass
-    else :   # если нет ошибок
-      if element[0] == 'BUY': orderBuy = polo.buy(pair, lowestAsk , orders['lot'] / lowestAsk)
-    time.sleep(0.1)
-
-def TradeHistoryNew():
-  global TradeHistory
-  time.sleep(0.3)
-  while chart == -1 :
-    TradeHistory_New = polo.returnTradeHistory(currencyPair=pair, start=int(time.time())  -3600 / 4 , end=time.time())  # История ордеров за последнии N мин
-    if TradeHistory_New != -1:  TradeHistory = TradeHistory_New
-  else:
-    TradeHistory_New = polo.returnTradeHistory(currencyPair=pair, start=int(time.time())  -3600 / 4 , end=time.time())  # История ордеров за последнии N мин
-    if TradeHistory_New != -1 :  TradeHistory = TradeHistory_New
-  return 
-
 # Поллучаем значения графика
-def chartNew():  
-  time.sleep(0.5)
+def chartNew():     
   global chart
-  while chart == -1 :
-    chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...
-    if chart_New != -1:  chart = chart_New  
-  else :
-    chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...
-    if chart_New != -1   :  chart = chart_New  
+  
+  chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...    
+  if chart_New != -1:  chart = chart_New  
+  elif chart_New == -1: time.sleep(0.15); chartNew()
   return 
 
 #Получить Баланс USDT
-def BalancesNew():
-  time.sleep(0.9)
+def BalancesNew():  
   global USDT
-  while  USDT == -1:    
-    USDTnew = polo.returnBalances() 
-    if USDTnew != -1 : USDT = float(USDTnew['USDT'])
-  else :
-    USDTnew = polo.returnBalances()     
-    if USDTnew != -1 : USDT = float(USDTnew['USDT'])
+  
+  USDTnew = polo.returnBalances() 
+  if USDTnew != -1 : USDT = float(USDTnew['USDT'])
+  elif USDTnew == -1 : time.sleep(0.15); BalancesNew()
   return
 
 # получить текущее значения в паре  
-def currentTicker():
-  time.sleep(1.3)
+def currentTicker():     
   global current
-  while  current == -1:
-    currentNew = polo.returnTicker()         
-    if currentNew != -1: current = currentNew[pair]  
-  else:
-    currentNew = polo.returnTicker()     
-    if currentNew != -1  : current = currentNew[pair]  
+  
+  currentNew = polo.returnTicker()         
+  if currentNew != -1: current = currentNew[pair]  
+  elif currentNew == -1: time.sleep(0.15); currentTicker() 
   return
   
-"""Обновление данных на бирже"""  
-def RefreshData():      
-  #threading.Thread(target = TradeHistoryNew).start()     
-  threading.Thread(target = chartNew).start()  
-  threading.Thread(target = BalancesNew).start() 
-  threading.Thread(target = currentTicker).start()   
-  return
+def mainThread():
+  """  Главный поток, для обработки очередей  """
+  while not _FINISH :
+     try:
+       element = q.get_nowait()
+     except : # на случай ошибок или пустой очереди sys.exc_info()[0]
+      pass
+     else :   # если нет ошибок
+      #if element['event'] == 'BUY': orderBuy = polo.buy(element['pair'], element['rate'] , element['amount'])
+      #if element['event'] == 'SELL': orderBuy = polo.sell(element['pair'], element['rate'] , element['amount'])
+      if element['event'] == 'chartNew': chartNew()
+      if element['event'] == 'BalancesNew': BalancesNew()
+      if element['event'] == 'currentTicker': currentTicker()
+     time.sleep(0.15)
 
 def tick():
 
@@ -195,26 +172,29 @@ def tick():
   # ПОКУПКА # RSI < 70 и хватает ли депозита
   if  RSIcurrent < 80 and float(USDT) > orders['lot'] :    
     if orders['count'] == 0:     # первый вход
-      orders['bet'][0] = lowestAsk
-      orders['count'] +=1           
-      orderBuy = polo.buy(pair, lowestAsk , orders['lot'] / lowestAsk)
-      print(currentDT,'buy', orderBuy)      
-      for i in range(1,49):
-        orders['bet'][i] = lowestAsk  - lowestAsk / 100 * i * orders['step'] 
-      #del orders['bet']
-      #orders['bet'] = [ lowestAsk  - lowestAsk / 100 * x * orders['step'] for x in range(1, 100 // orders['step'])] 
+      #orders['bet'][0] = lowestAsk
+      orders['count'] +=1    
+      q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : orders['lot'] / lowestAsk })       
+      #orderBuy = polo.buy(pair, lowestAsk , orders['lot'] / lowestAsk)
+      print(currentDT,'buy','orderBuy', lowestAsk)      
+      #for i in range(1,49):
+      #  orders['bet'][i] = lowestAsk  - lowestAsk / 100 * i * orders['step'] 
+      orders['bet'].clear
+      orders['bet'] = [ lowestAsk  - lowestAsk / 100 * x * orders['step'] for x in range(0, round(100 / orders['step']))] 
 
     else : # Второй вход и последующее и хватает ли депозита
       if lowestAsk < orders['bet'][orders['count']] and float(USDT) > (orders['coefficient']**(orders['count']-1)) * orders['lot'] :
         #os.system("Coin.mp3")        
         orders['count'] +=1                         #формула линейной прогрессии  1*orders['coefficient'] ** orders['count']-1 #   bn = b1 *q**n-1
-        orderBuy = polo.buy(pair, lowestAsk , (orders['coefficient']**(orders['count']-1)) * orders['lot'] / lowestAsk)
-        print(currentDT,'buy', orderBuy)                          
+        #orderBuy = polo.buy(pair, lowestAsk , (orders['coefficient']**(orders['count']-1)) * orders['lot'] / lowestAsk)
+        q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : (orders['coefficient']**(orders['count']-1)) * orders['lot'] / lowestAsk })
+        print(currentDT,'buy', 'orderBuy', lowestAsk )                          
         
   #ПРОДАЖА  
   if (highestBid > orders['bet'][orders['count'] -2 ] and  orders['count'] >= 2) or (orders['count'] == 1  and  highestBid > orders['bet'][0] + orders['bet'][0] / 100 * orders['step']):    
-    orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
-    print (currentDT, 'SELL', orderSell )    
+    q.put({'event': 'SELL', 'pair' : pair, 'rate' : highestBid, 'amount' : polo.returnBalances()['LTC']})
+    #orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
+    print (currentDT, 'SELL','orderSell',lowestAsk  )    
     orders['count'] =0
   
  
@@ -230,19 +210,26 @@ def tick():
   canv.create_text(85,290,text="PriceChannel (" + str(NPriceChannel) + "): {:.8f}".format(PiceChannel(NPriceChannel,chart)['centerLine']) ,fill="#0094FF" )
   
   RSIchartLine[0]  
-  # print('открытых ордеров :',len(OpenOrders) )
-  # print (time.localtime(time.time() - 3600*5))
-
 
   time_var.set("TF  :\t{:.0f}".format(timeframe/60)+ " min    "+                
                "\nBUY   :\t{:.8f} ".format(lowestAsk) +  
   	           "\nSELL  :\t{:.8f} ".format(highestBid) +
                "\nRefresh: " + time.strftime("%H:%M:%S")  )
 
-  RefreshData()
-  root.after(2000, tick)  # следующий tick через 5 с
+  q.put({'event':'chartNew'})
+  q.put({'event':'BalancesNew'})
+  q.put({'event':'currentTicker'})
+  root.after(1000, tick)  # следующий tick через 5 с
 
-RefreshData()
-root.after(2000, tick)
+q.put({'event':'chartNew'})
+q.put({'event':'BalancesNew'})
+q.put({'event':'currentTicker'})
+
+mainThread = threading.Thread(target = mainThread, name = 'mainThiredAliceBot' )
+mainThread.start()
+
+#root.protocol('WM_DELETE_WINDOW', mainThreadKill ) # обработчик закрытия окна
+root.after(1000, tick)
 root.mainloop()
-    
+_FINISH = True    
+

@@ -1,2 +1,2 @@
-# bu77h4ad trading bot
+# Alice Trading Bot by bu77h4ad
 

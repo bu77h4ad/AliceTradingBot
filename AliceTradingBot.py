@@ -65,7 +65,7 @@ def stepNew():
     sum += sum * orders['coefficient']
     i+=1
   orders['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
-  print ('step = ', orders['step']) 
+  print ('step =', orders['step']) 
 
 def chartNew():     
   """ Получить график цены """
@@ -137,32 +137,32 @@ def tick():
     
     
   #### определение максимумов и минимумов
-  high24hr = Highest(len(chart)- 1 ,chart)
-  low24hr = Lowest(len(chart) -1 ,  chart)
+  high = Highest(len(chart)- 1 ,chart)
+  low = Lowest(len(chart) -1 ,  chart)
 
   ### ОТРИСОВИ
   #### отрисовка цены на графике
-  delta24 = high24hr - low24hr
+  delta24 = high - low
   for i in range(1,len(chart) -NPriceChannel - 1 ):   
-    canv.create_line(600 -i*zoomX, (high24hr - float(chart[-i]['close']))/ (delta24/300) 
-                    ,600 -(i+1)*zoomX,(high24hr - float(chart[-i-1]['close']))/ (delta24/300),width=1,fill="#00B000" )
+    canv.create_line(600 -i*zoomX, (high - float(chart[-i]['close']))/ (delta24/300) 
+                    ,600 -(i+1)*zoomX,(high - float(chart[-i-1]['close']))/ (delta24/300),width=1,fill="#00B000" )
   ### end
 
   #### Отрисовка средней скользящей      
-    canv.create_line(600 -i*zoomX, (high24hr - float(SMA(NSMA,chart,-i)))/ (delta24/300) 
-                    ,600 -(i+1)*zoomX,(high24hr - float(SMA(NSMA,chart,-i-1)))/ (delta24/300),width=1,fill="#FF6A00",dash=1 ) # SMA отрисовка 
+    canv.create_line(600 -i*zoomX, (high - float(SMA(NSMA,chart,-i)))/ (delta24/300) 
+                    ,600 -(i+1)*zoomX,(high - float(SMA(NSMA,chart,-i-1)))/ (delta24/300),width=1,fill="#FF6A00",dash=1 ) # SMA отрисовка 
   ### end  
 
   ### Отрисовка Price Channel
     #Нижняя линия
-    canv.create_line(600 -i*zoomX, (high24hr - float(PiceChannel(NPriceChannel,chart,-i)['lowPrice']))/ (delta24/300) 
-                    ,600 -(i+1)*zoomX,(high24hr - float(PiceChannel(NPriceChannel,chart,-i-1)['lowPrice']))/ (delta24/300),width=1,fill="#0094FF",dash=1 ) 
+    canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['lowPrice']))/ (delta24/300) 
+                    ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['lowPrice']))/ (delta24/300),width=1,fill="#0094FF",dash=1 ) 
     #Средняя линия
-    canv.create_line(600 -i*zoomX, (high24hr - float(PiceChannel(NPriceChannel,chart,-i)['centerLine']))/ (delta24/300) 
-                    ,600 -(i+1)*zoomX,(high24hr - float(PiceChannel(NPriceChannel,chart,-i-1)['centerLine']))/ (delta24/300),width=1,fill="#0094FF",dash=1 ) 
+    canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['centerLine']))/ (delta24/300) 
+                    ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['centerLine']))/ (delta24/300),width=1,fill="#0094FF",dash=1 ) 
     # Верхняя линия
-    canv.create_line(600 -i*zoomX, (high24hr - float(PiceChannel(NPriceChannel,chart,-i)['highPrice']))/ (delta24/300) 
-                    ,600 -(i+1)*zoomX,(high24hr - float(PiceChannel(NPriceChannel,chart,-i-1)['highPrice']))/ (delta24/300),width=1,fill="#0094FF",dash=1 )     
+    canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['highPrice']))/ (delta24/300) 
+                    ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['highPrice']))/ (delta24/300),width=1,fill="#0094FF",dash=1 )     
     # RSI  
     canvRSI.create_line(600 -i*zoomX, 100 - RSI(14,chart,-i) ,
                         600 -(i+1)*zoomX,100 - RSI(14,chart,-i-1),width=1,fill="Slate Gray" )
@@ -182,11 +182,6 @@ def tick():
       orderbuy = polo.buy(pair, lowestAsk , 103)
       text1.insert(1.0, time.strftime(" [%H:%M:%S] "+str(orderbuy)+"\n"))
   """
-  #res= {"bet":[]}
-  #res["bet"] = [ lowestAsk  - lowestAsk / 100 * x * orders['step'] for x in range(1, 100 // orders['step'])]
-  #print (res)
-  #res = orders
-  #res['bet'].clear()  
   RSIcurrent = RSI(14,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
   if  RSIcurrent < 80 and float(Balances['USDT']) > orders['lot'] :    

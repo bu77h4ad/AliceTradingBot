@@ -9,8 +9,8 @@ import os
 from API_KEY import *
 import queue
 
-polo = APIpoloniex(api_key, api_secret,3.0)
-q = queue.Queue() #Очередь
+polo = APIpoloniex(api_key, api_secret, 3.0)
+q = queue.Queue() # Экземпляр класса, очередь
 
 ###Глобальные переменные
 _mainThreadStop = False
@@ -55,35 +55,48 @@ f = open('Configure.ini','r')
 orders = json.load(f)
 f.close
 
-# Поллучаем значения графика
+def stepNew():
+  """ Автоматичекий подсчет шага в % 
+      шаг = депозит / макимальное количество ставок
+  """
+  sum = orders['lot']
+  i=0
+  while sum < float (Balances['USDT']):
+    sum += sum * orders['coefficient']
+    i+=1
+  orders['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
+  print ('step = ', orders['step']) 
+
 def chartNew():     
+  """ Получить график цены """
   global chart
   
   chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...    
   if chart_New != -1:  chart = chart_New  
-  elif chart_New == -1: time.sleep(0.15); chartNew()
+  #elif chart_New == -1: time.sleep(0.15); chartNew()
   return 
 
-#Получить Баланс 
 def BalancesNew():  
+  """ Получить мой Баланс """
   global Balances
-
+  
   Balances_New = polo.returnBalances() 
   if Balances_New != -1 : Balances = Balances_New
-  elif Balances_New == -1 : time.sleep(0.15); BalancesNew()
+  #elif Balances_New == -1 : time.sleep(0.15); BalancesNew()
   return
 
-# получить текущее значения в паре  
+
 def currentTickerNew():     
+  """ Получить текущие котировки в паре  """
   global current
   
   currentTicker_New = polo.returnTicker()         
   if currentTicker_New != -1: current = currentTicker_New[pair]  
-  elif currentTicker_New == -1: time.sleep(0.15); currentTickerNew() 
+  #elif currentTicker_New == -1: time.sleep(0.15); currentTickerNew() 
   return
   
 def mainThread():
-  """  Главный поток, для обработки очередей  """
+  """  Поток, для обработки очередей с запросами на poloniex.com """
   while not _mainThreadStop :
      try:
        element = q.get_nowait()
@@ -95,13 +108,17 @@ def mainThread():
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
-     time.sleep(0.15)
+      if element['event'] == 'stepNew': stepNew()
+     time.sleep(0.1)
 
 def tick():
-  q.put({'event':'chartNew'})
-  q.put({'event':'BalancesNew'})
-  q.put({'event':'currentTickerNew'})
+  """ Отрисовка окна окна и принятие решений по торговле """
+  text1.insert(1.0, time.strftime("[%H:%M:%S] qsize "+str( q.qsize() ) +' ' ))    
   
+  q.put({'event':'currentTickerNew'})
+  q.put({'event':'BalancesNew'})
+  q.put({'event':'chartNew'})
+
   #на первое включение
   while (Balances == -1 or current == -1 or chart == -1 )  : time.sleep(0.1)
 
@@ -175,8 +192,9 @@ def tick():
   if  RSIcurrent < 80 and float(Balances['USDT']) > orders['lot'] :    
     if orders['count'] == 0:     # первый вход
       #orders['bet'][0] = lowestAsk
-      orders['count'] +=1    
-      q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : orders['lot'] / lowestAsk })       
+      orders['count'] +=1          
+      q.put({'event': 'stepNew'}) 
+      q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : orders['lot'] / lowestAsk })             
       #orderBuy = polo.buy(pair, lowestAsk , orders['lot'] / lowestAsk)
       #print(currentDT,'buy','orderBuy', pair, lowestAsk , orders['lot'] / lowestAsk)      
       #for i in range(1,49):
@@ -197,14 +215,13 @@ def tick():
     q.put({'event': 'SELL', 'pair' : pair, 'rate' : highestBid, 'amount' : Balances['LTC']})
     #orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
     #print (currentDT, 'SELL','orderSell',pair, highestBid, Balances['LTC']  )    
-    orders['count'] =0
-  
+    orders['count'] = 0    
  
   f = open('Configure.ini','w')
   json.dump(orders, f, sort_keys = True, indent = 3)
   f.close
     
-  #text1.insert(1.0, time.strftime(" [%H:%M:%S] open "+str(chart[-1]['open']) + " close " + str(chart[-1]['close']) +"\n" ))    
+  
   canvRSI.create_text(640,RSIchartLine[0]-7, text= 100-RSIchartLine[0]  ,fill="Slate Gray" )
   canvRSI.create_text(640,RSIchartLine[1]+7, text= 100-RSIchartLine[1]  ,fill="Slate Gray" )
   canvRSI.create_text(50,90,text= "RSI ("+str(14)+"): {:2.4f}".format(RSIcurrent) ,fill="Slate Gray" )
@@ -218,7 +235,7 @@ def tick():
   	           "\nSELL  :\t{:.8f} ".format(highestBid) +
                "\nRefresh: " + time.strftime("%H:%M:%S")  )
 
-  root.after(1000, tick)  # следующий tick через 5 с
+  root.after(5000, tick)  # следующий tick через 5 с
 
 mainThread = threading.Thread(target = mainThread, name = 'mainThiredAliceBot' ).start()
 

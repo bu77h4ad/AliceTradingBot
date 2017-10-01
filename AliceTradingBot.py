@@ -9,7 +9,7 @@ import os
 from API_KEY import *
 import queue
 
-polo = APIpoloniex(api_key, api_secret, 3.0)
+polo = APIpoloniex(api_key, api_secret, 1.0)
 q = queue.Queue() # Экземпляр класса, очередь
 
 ###Глобальные переменные
@@ -34,10 +34,10 @@ root.iconbitmap(default='chart.ico')
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
 
-fm = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
-m.add_cascade(label="File",menu=fm) #пункту располагается на основном меню (m)
-fm.add_command(label="Open...", command = '') #формируется список команд пункта меню
-fm.add_command(label="Exit", command = root.quit) #формируется список команд пункта меню
+fileMenu = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
+m.add_cascade(label="File", menu=fileMenu) #пункту располагается на основном меню (m)
+fileMenu.add_command(label="Open...", command = '') #формируется список команд пункта меню
+fileMenu.add_command(label="Exit", command = root.quit) #формируется список команд пункта меню
 
 time_var = StringVar()
 label = Label(f, textvariable=time_var, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
@@ -55,9 +55,35 @@ f = open('Configure.ini','r')
 orders = json.load(f)
 f.close
 
+def about(): # Меню About
+  winAbout = Toplevel()
+  winAbout.title("About")
+  winAbout.geometry('470x160+100+100') # ширина=500, высота=400, x=300, y=200
+  winAbout.iconbitmap(default='chart.ico')
+  winAbout.resizable(False, False) # размер окна не может быть изменён 
+  winAbout["bg"] = "Black"
+    
+  winAbout.txt=Text(winAbout,height=8,width=7,borderwidth =0,font='Arial 9',bg = "Black" , fg="#00B000",wrap=WORD)
+  txt = "DONATIONS: \n\
+  BTC fb0a34933ca0781f5e9917a52ea86d72cbb1c05b4ccfff56f9c78bdce5f8a573\n\
+  LTC LRsm54XYJxG7NJCuAntK98odJoXhwp1GBK\n\
+  ETH 0x8750793385349e2edd63e87d5c523b3b2c972b82\n\
+  ZEC t1TW9tC321fZyDQRX4spzpxar1hRBcBHU6S\n\n\
+CONTACT:\n\
+  Telegram: bu77h4ad"
+  winAbout.txt.insert('end', txt)
+  winAbout.txt.configure(state=DISABLED)
+  winAbout.txt.pack(fill="both")
+
+  winAbout.but = Button(winAbout,text = 'Ok' , height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winAbout.destroy )    
+  winAbout.but.pack(fill="none")
+
+  winAbout.mainloop()
+m.add_command(label="About", command = about) #формируется список команд пункта меню
+
 def stepNew():
   """ Автоматичекий подсчет шага в % 
-      шаг = депозит / макимальное количество ставок
+      шаг = изменение цены за сутки / макимальное количество ставок
   """
   sum = orders['lot']
   i=0
@@ -65,7 +91,8 @@ def stepNew():
     sum += sum * orders['coefficient']
     i+=1
   orders['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
-  print ('step =', orders['step']) 
+  if orders['step'] < 1.0 : orders['step'] = 1.0
+  print (time.strftime("%H:%M:%S"),'step =', orders['step'], 'max. count bet =', i) 
 
 def chartNew():     
   """ Получить график цены """
@@ -85,7 +112,6 @@ def BalancesNew():
   #elif Balances_New == -1 : time.sleep(0.15); BalancesNew()
   return
 
-
 def currentTickerNew():     
   """ Получить текущие котировки в паре  """
   global current
@@ -103,8 +129,8 @@ def mainThread():
      except : # на случай ошибок или пустой очереди sys.exc_info()[0]
       pass
      else :   # если нет ошибок
-      if element['event'] == 'BUY': orderBuy = polo.buy(element['pair'], element['rate'] , element['amount']); print (orderBuy)
-      if element['event'] == 'SELL': orderSell = polo.sell(element['pair'], element['rate'] , element['amount']); print (orderSell)
+      if element['event'] == 'BUY': orderBuy = polo.buy(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"), orderBuy)
+      if element['event'] == 'SELL': orderSell = polo.sell(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"), orderSell)
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
@@ -113,14 +139,14 @@ def mainThread():
 
 def tick():
   """ Отрисовка окна окна и принятие решений по торговле """
-  text1.insert(1.0, time.strftime("[%H:%M:%S] qsize "+str( q.qsize() ) +' ' ))    
+  text1.insert(1.0, time.strftime("[%H:%M:%S] qsize " + str( q.qsize() ) + ' ' ))    
   
   q.put({'event':'currentTickerNew'})
   q.put({'event':'BalancesNew'})
   q.put({'event':'chartNew'})
 
   #на первое включение
-  while (Balances == -1 or current == -1 or chart == -1 )  : time.sleep(0.1)
+  while (Balances == -1 or current == -1 or chart == -1 )  :time.sleep(1.5); chartNew(); BalancesNew(); currentTickerNew();
 
   lowestAsk =  float(current['lowestAsk'])    # могу купить
   highestBid = float(current['highestBid'])   # могу продать

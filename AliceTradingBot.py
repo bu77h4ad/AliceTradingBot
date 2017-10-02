@@ -29,7 +29,7 @@ timeframe=300 #300-5min 900-15min 1800-30min 7200-2hour
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
 root.title("Alice Trading Bot")
-root.geometry('650x470+100+100') # ширина=500, высота=400, x=300, y=200
+root.geometry('650x500+100+100') # ширина=500, высота=400, x=300, y=200
 root.iconbitmap(default='chart.ico')
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
@@ -40,7 +40,7 @@ fileMenu.add_command(label="Open...", command = '') #формируется сп
 fileMenu.add_command(label="Exit", command = root.quit) #формируется список команд пункта меню
 
 time_var = StringVar()
-label = Label(f, textvariable=time_var, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
+label = Label(f, textvariable=time_var, justify= LEFT, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
 canv = Canvas(f, width = 650, height = 300, bg = "Black",borderwidth = 0)
 canvRSI = Canvas(f, width = 650, height = 100, bg = "Black",borderwidth = 0)
 text1=Text(f,font='Courier 9',wrap=WORD,borderwidth = 1,bg="Black", fg="#00B000",exportselection=0)
@@ -48,8 +48,8 @@ text1.insert(1.0, time.strftime(" [%H:%M:%S] Start\n"))
 
 canv.pack()
 canvRSI.pack()
-label.pack(side="left")
-text1.pack(side="top",fill="both")
+label.pack(side="left", anchor=NW, padx=0)
+text1.pack(side="top", fill="both")
 
 f = open('Configure.ini','r')
 orders = json.load(f)
@@ -75,7 +75,7 @@ CONTACT:\n\
   winAbout.txt.configure(state=DISABLED)
   winAbout.txt.pack(fill="both")
 
-  winAbout.but = Button(winAbout,text = 'Ok' , height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winAbout.destroy )    
+  winAbout.but = Button(winAbout,text = 'Ok',relief="groove",borderwidth=2, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winAbout.destroy )    
   winAbout.but.pack(fill="none")
 
   winAbout.mainloop()
@@ -129,8 +129,8 @@ def mainThread():
      except : # на случай ошибок или пустой очереди sys.exc_info()[0]
       pass
      else :   # если нет ошибок
-      if element['event'] == 'BUY': orderBuy = polo.buy(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"), orderBuy)
-      if element['event'] == 'SELL': orderSell = polo.sell(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"), orderSell)
+      if element['event'] == 'BUY': orderBuy = polo.buy(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"), element['rate'] , element['amount'] , orderBuy)
+      if element['event'] == 'SELL': orderSell = polo.sell(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"),  element['rate'] , element['amount'], orderSell)
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
@@ -138,8 +138,7 @@ def mainThread():
      time.sleep(0.1)
 
 def tick():
-  """ Отрисовка окна окна и принятие решений по торговле """
-  text1.insert(1.0, time.strftime("[%H:%M:%S] qsize " + str( q.qsize() ) + ' ' ))    
+  """ Отрисовка окна окна и принятие решений по торговле """  
   
   q.put({'event':'currentTickerNew'})
   q.put({'event':'BalancesNew'})
@@ -250,11 +249,12 @@ def tick():
   canv.create_text(85,290,text="PriceChannel (" + str(NPriceChannel) + "): {:.8f}".format(PiceChannel(NPriceChannel,chart)['centerLine']) ,fill="#0094FF" )
   
   RSIchartLine[0]  
-
-  time_var.set("TF  :\t{:.0f}".format(timeframe/60)+ " min    "+                
-               "\nBUY   :\t{:.8f} ".format(lowestAsk) +  
-  	           "\nSELL  :\t{:.8f} ".format(highestBid) +
-               "\nRefresh: " + time.strftime("%H:%M:%S")  )
+  
+  time_var.set("TF    : {:.0f}".format(timeframe/60)+ " min"+                
+               "\nBUY   :\t{:.8f} ".format(lowestAsk) + 
+  	           "\nSELL  :\t{:.8f} ".format(highestBid) + 
+               "\nRefresh: " + time.strftime("%H:%M:%S") +
+               "\nQeueu : {:.0f}".format(q.qsize()) )
 
   root.after(5000, tick)  # следующий tick через 5 с
 

@@ -9,6 +9,10 @@ import os
 from API_KEY import *
 import queue
 
+f = open('Configure.ini','r')
+configure = json.load(f)
+f.close
+
 polo = APIpoloniex(api_key, api_secret, 1.0)
 q = queue.Queue() # Экземпляр класса, очередь
 
@@ -39,6 +43,25 @@ m.add_cascade(label="File", menu=fileMenu) #пункту располагает�
 fileMenu.add_command(label="Open...", command = '') #формируется список команд пункта меню
 fileMenu.add_command(label="Exit", command = root.quit) #формируется список команд пункта меню
 
+def showIndicator(indicator):
+    if configure[indicator] == 1 : configure[indicator] = 0
+    else: configure[indicator] = 1        
+    
+viewMenu = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
+m.add_cascade(label="View", menu=viewMenu) #пункту располагается на основном меню (m)
+
+SMAshow = IntVar()
+PriceChannelShow = IntVar()
+RSIshow = IntVar()
+
+SMAshow.set(configure['SMAshow'])
+PriceChannelShow.set(configure['PriceChannelShow'])
+RSIshow.set(configure['RSIshow'])
+
+viewMenu.add_checkbutton(label="SMA", variable=SMAshow, onvalue=1, offvalue=0, command=lambda:showIndicator('SMAshow'))
+viewMenu.add_checkbutton(label="Price Channel", variable=PriceChannelShow, onvalue=1, offvalue=0, command=lambda:showIndicator('PriceChannelShow'))
+viewMenu.add_checkbutton(label="RSI",variable = RSIshow, onvalue=1, offvalue=0, command=lambda:showIndicator('RSIshow'))
+
 time_var = StringVar()
 label = Label(f, textvariable=time_var, justify= LEFT, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
 canv = Canvas(f, width = 650, height = 300, bg = "Black",borderwidth = 0)
@@ -46,14 +69,14 @@ canvRSI = Canvas(f, width = 650, height = 100, bg = "Black",borderwidth = 0)
 text1=Text(f,font='Courier 9',wrap=WORD,borderwidth = 1,bg="Black", fg="#00B000",exportselection=0)
 text1.insert(1.0, time.strftime(" [%H:%M:%S] Start\n"))
 
+statusBarText = "statusBarText"
+statusBar = Label(f, text=statusBarText ,font="Courier 9", bg="Black", fg="#00B000", bd=1, relief=SUNKEN, anchor=W)
+statusBar.pack(side = "bottom",fill=X)  
+
 canv.pack()
 canvRSI.pack()
 label.pack(side="left", anchor=NW, padx=0)
-text1.pack(side="top", fill="both")
-
-f = open('Configure.ini','r')
-orders = json.load(f)
-f.close
+text1.pack(side="top", fill=X)
 
 def about(): # Меню About
   winAbout = Toplevel()
@@ -63,7 +86,7 @@ def about(): # Меню About
   winAbout.resizable(False, False) # размер окна не может быть изменён 
   winAbout["bg"] = "Black"
     
-  winAbout.txt=Text(winAbout,height=8,width=7,borderwidth =0,font='Arial 9',bg = "Black" , fg="#00B000",wrap=WORD)
+  winAbout.txt=Text(winAbout, height=8, width=7, borderwidth =0, font='Arial 9',bg = "Black" , fg="#00B000",wrap=WORD)
   txt = "DONATIONS: \n\
   BTC fb0a34933ca0781f5e9917a52ea86d72cbb1c05b4ccfff56f9c78bdce5f8a573\n\
   LTC LRsm54XYJxG7NJCuAntK98odJoXhwp1GBK\n\
@@ -75,7 +98,7 @@ CONTACT:\n\
   winAbout.txt.configure(state=DISABLED)
   winAbout.txt.pack(fill="both")
 
-  winAbout.but = Button(winAbout,text = 'Ok',relief="groove",borderwidth=2, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winAbout.destroy )    
+  winAbout.but = Button(winAbout,text = 'Ok',activebackground = "#00B000" , activeforeground = "Black", relief="groove",borderwidth=2, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winAbout.destroy )    
   winAbout.but.pack(fill="none")
 
   winAbout.mainloop()
@@ -85,14 +108,14 @@ def stepNew():
   """ Автоматичекий подсчет шага в % 
       шаг = изменение цены за сутки / макимальное количество ставок
   """
-  sum = orders['lot']
+  sum = configure['lot']
   i=0
   while sum < float (Balances['USDT']):
-    sum += sum * orders['coefficient']
+    sum += sum * configure['coefficient']
     i+=1
-  orders['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
-  if orders['step'] < 1.0 : orders['step'] = 1.0
-  print (time.strftime("%H:%M:%S"),'step =', orders['step'], 'max. count bet =', i) 
+  configure['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
+  if configure['step'] < 1.0 : configure['step'] = 1.0
+  print (time.strftime("%H:%M:%S"),'step =', configure['step'], 'max. count bet =', i) 
 
 def chartNew():     
   """ Получить график цены """
@@ -174,25 +197,28 @@ def tick():
   ### end
 
   #### Отрисовка средней скользящей      
-    canv.create_line(600 -i*zoomX, (high - float(SMA(NSMA,chart,-i)))/ (delta24/300) 
+    if configure['SMAshow'] == True :
+      canv.create_line(600 -i*zoomX, (high - float(SMA(NSMA,chart,-i)))/ (delta24/300) 
                     ,600 -(i+1)*zoomX,(high - float(SMA(NSMA,chart,-i-1)))/ (delta24/300),width=1,fill="#FF6A00",dash=1 ) # SMA отрисовка 
   ### end  
 
   ### Отрисовка Price Channel
+    if configure['PriceChannelShow'] == True:
     #Нижняя линия
-    canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['lowPrice']))/ (delta24/300) 
+      canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['lowPrice']))/ (delta24/300) 
                     ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['lowPrice']))/ (delta24/300),width=1,fill="#0094FF",dash=1 ) 
     #Средняя линия
-    canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['centerLine']))/ (delta24/300) 
+      canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['centerLine']))/ (delta24/300) 
                     ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['centerLine']))/ (delta24/300),width=1,fill="#0094FF",dash=1 ) 
     # Верхняя линия
-    canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['highPrice']))/ (delta24/300) 
+      canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['highPrice']))/ (delta24/300) 
                     ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['highPrice']))/ (delta24/300),width=1,fill="#0094FF",dash=1 )     
-    # RSI  
-    canvRSI.create_line(600 -i*zoomX, 100 - RSI(14,chart,-i) ,
+  ### Отрисовка RSI 
+    if configure['RSIshow'] == True: 
+      canvRSI.create_line(600 -i*zoomX, 100 - RSI(14,chart,-i) ,
                         600 -(i+1)*zoomX,100 - RSI(14,chart,-i-1),width=1,fill="Slate Gray" )
-    canvRSI.create_line(0,RSIchartLine[0],650,RSIchartLine[0],width=1,fill="Slate Gray",dash=1 )
-    canvRSI.create_line(0,RSIchartLine[1],650,RSIchartLine[1],width=1,fill="Slate Gray",dash=1 )       
+      canvRSI.create_line(0,RSIchartLine[0],650,RSIchartLine[0],width=1,fill="Slate Gray",dash=1 )
+      canvRSI.create_line(0,RSIchartLine[1],650,RSIchartLine[1],width=1,fill="Slate Gray",dash=1 )       
   ### end 
   currentDT = datetime.datetime.now()    
   ### ПОКУПКА И ПРОДАЖА  
@@ -209,44 +235,46 @@ def tick():
   """
   RSIcurrent = RSI(14,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
-  if  RSIcurrent < 80 and float(Balances['USDT']) > orders['lot'] :    
-    if orders['count'] == 0:     # первый вход
-      #orders['bet'][0] = lowestAsk
-      orders['count'] +=1          
+  if  RSIcurrent < 80 and float(Balances['USDT']) > configure['lot'] :    
+    if configure['count'] == 0:     # первый вход
+      #configure['bet'][0] = lowestAsk
+      configure['count'] +=1          
       q.put({'event': 'stepNew'}) 
-      q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : orders['lot'] / lowestAsk })             
-      #orderBuy = polo.buy(pair, lowestAsk , orders['lot'] / lowestAsk)
-      #print(currentDT,'buy','orderBuy', pair, lowestAsk , orders['lot'] / lowestAsk)      
+      q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : configure['lot'] / lowestAsk })             
+      #orderBuy = polo.buy(pair, lowestAsk , configure['lot'] / lowestAsk)
+      #print(currentDT,'buy','orderBuy', pair, lowestAsk , configure['lot'] / lowestAsk)      
       #for i in range(1,49):
-      #  orders['bet'][i] = lowestAsk  - lowestAsk / 100 * i * orders['step'] 
-      orders['bet'].clear
-      orders['bet'] = [ lowestAsk  - lowestAsk / 100 * x * orders['step'] for x in range(0, round(100 / orders['step']))] 
+      #  configure['bet'][i] = lowestAsk  - lowestAsk / 100 * i * configure['step'] 
+      configure['bet'].clear
+      configure['bet'] = [ lowestAsk  - lowestAsk / 100 * x * configure['step'] for x in range(0, round(100 / configure['step']))] 
 
     else : # Второй вход и последующее и хватает ли депозита
-      if lowestAsk < orders['bet'][orders['count']] and float(Balances['USDT']) > (orders['coefficient']**(orders['count']-1)) * orders['lot'] :
+      if lowestAsk < configure['bet'][configure['count']] and float(Balances['USDT']) > (configure['coefficient']**(configure['count']-1)) * configure['lot'] :
         #os.system("Coin.mp3")        
-        orders['count'] +=1                         #формула линейной прогрессии  1*orders['coefficient'] ** orders['count']-1 #   bn = b1 *q**n-1
-        #orderBuy = polo.buy(pair, lowestAsk , (orders['coefficient']**(orders['count']-1)) * orders['lot'] / lowestAsk)
-        q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : (orders['coefficient']**(orders['count']-1)) * orders['lot'] / lowestAsk })
-        #print(currentDT,'buy', 'orderBuy', pair, lowestAsk , (orders['coefficient']**(orders['count']-1)) * orders['lot'] / lowestAsk )                          
+        configure['count'] +=1                         #формула линейной прогрессии  1*configure['coefficient'] ** configure['count']-1 #   bn = b1 *q**n-1
+        #orderBuy = polo.buy(pair, lowestAsk , (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk)
+        q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk })
+        #print(currentDT,'buy', 'orderBuy', pair, lowestAsk , (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk )                          
         
   #ПРОДАЖА  
-  if (highestBid > orders['bet'][orders['count'] -2 ] and  orders['count'] >= 2) or (orders['count'] == 1  and  highestBid > orders['bet'][0] + orders['bet'][0] / 100 * orders['step']):    
+  if (highestBid > configure['bet'][configure['count'] -2 ] and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['step']):    
     q.put({'event': 'SELL', 'pair' : pair, 'rate' : highestBid, 'amount' : Balances['LTC']})
     #orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
     #print (currentDT, 'SELL','orderSell',pair, highestBid, Balances['LTC']  )    
-    orders['count'] = 0    
+    configure['count'] = 0    
  
   f = open('Configure.ini','w')
-  json.dump(orders, f, sort_keys = True, indent = 3)
+  json.dump(configure, f, sort_keys = True, indent = 3)
   f.close
     
-  
-  canvRSI.create_text(640,RSIchartLine[0]-7, text= 100-RSIchartLine[0]  ,fill="Slate Gray" )
-  canvRSI.create_text(640,RSIchartLine[1]+7, text= 100-RSIchartLine[1]  ,fill="Slate Gray" )
-  canvRSI.create_text(50,90,text= "RSI ("+str(14)+"): {:2.4f}".format(RSIcurrent) ,fill="Slate Gray" )
-  canv.create_text(60,275,text= "SMA ("+str(NSMA)+"): {:.8f}".format(SMA(NSMA,chart)) ,fill="#FF6A00" )
-  canv.create_text(85,290,text="PriceChannel (" + str(NPriceChannel) + "): {:.8f}".format(PiceChannel(NPriceChannel,chart)['centerLine']) ,fill="#0094FF" )
+  if configure['RSIshow'] == True:
+    canvRSI.pack()
+    canvRSI.create_text(640,RSIchartLine[0]-7, text= 100-RSIchartLine[0]  ,fill="Slate Gray" )
+    canvRSI.create_text(640,RSIchartLine[1]+7, text= 100-RSIchartLine[1]  ,fill="Slate Gray" )
+    canvRSI.create_text(50,90,text= "RSI ("+str(14)+"): {:2.4f}".format(RSIcurrent) ,fill="Slate Gray" )
+  else: canvRSI.pack_forget()
+  if configure['SMAshow'] == True: canv.create_text(60,275,text= "SMA ("+str(NSMA)+"): {:.8f}".format(SMA(NSMA,chart)) ,fill="#FF6A00" )
+  if configure['PriceChannelShow'] == True: canv.create_text(85,290,text="PriceChannel (" + str(NPriceChannel) + "): {:.8f}".format(PiceChannel(NPriceChannel,chart)['centerLine']) ,fill="#0094FF" )
   
   RSIchartLine[0]  
   

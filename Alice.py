@@ -25,10 +25,11 @@ TradeHistory = -1
 chart = -1
 current = -1
 
-NSMA=3   #SMA период
-NPriceChannel =50
+NSMA = configure['SMAperiod']   #SMA период
+NPriceChannel = configure['PriceChannelPeriod']
+NRSI= configure['RSIperiod']
 zoomX = 5
-timeframe=300 #300-5min 900-15min 1800-30min 7200-2hour
+timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
 
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
@@ -37,31 +38,45 @@ root.geometry('650x500+100+100') # ширина, высота, x=300, y=200
 root.iconbitmap(default='chart.ico')
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
-#-----------MENU--------------------------------
+#---MENU--------------------------------
+def showIndicator(indicator):
+  if configure[indicator] == 1 : configure[indicator] = 0
+  else: configure[indicator] = 1      
+
+def timeFrameSet(n):
+  global timeFrame 
+  timeFrame=n                 # Для чарта
+  timeFrameVar.set(n)         # для кректной работы галочек
+  configure['timeFrame'] = n  # длязаписи в конфиг
+
 fileMenu = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
 m.add_cascade(label="File", menu=fileMenu) #пункту располагается на основном меню (m)
 fileMenu.add_command(label="Open...", command = '') #формируется список команд пункта меню
 fileMenu.add_command(label="Exit", command = root.quit) #формируется список команд пункта меню
 
-def showIndicator(indicator):
-    if configure[indicator] == 1 : configure[indicator] = 0
-    else: configure[indicator] = 1      
-      
+#---MENU---VIEW---------------------      
 viewMenu = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
 m.add_cascade(label="View", menu=viewMenu) #пункту располагается на основном меню (m)
 
 SMAshow = IntVar()
 PriceChannelShow = IntVar()
 RSIshow = IntVar()
+timeFrameVar = IntVar()
 
 SMAshow.set(configure['SMAshow'])
 PriceChannelShow.set(configure['PriceChannelShow'])
 RSIshow.set(configure['RSIshow'])
+timeFrameVar.set(configure['timeFrame'])
 
+viewMenu.add_checkbutton(label="5 min", variable=timeFrameVar, onvalue=300, offvalue=0, command=lambda: timeFrameSet(300))
+viewMenu.add_checkbutton(label="15 min", variable=timeFrameVar, onvalue=900, offvalue=0, command=lambda: timeFrameSet(900))
+viewMenu.add_checkbutton(label="30 min", variable=timeFrameVar, onvalue=1800, offvalue=0, command=lambda: timeFrameSet(1800))
+viewMenu.add_checkbutton(label="2 hour", variable=timeFrameVar, onvalue=7200, offvalue=0, command=lambda: timeFrameSet(7200))
+viewMenu.add_separator()
 viewMenu.add_checkbutton(label="SMA", variable=SMAshow, onvalue=1, offvalue=0, command=lambda:showIndicator('SMAshow'))
 viewMenu.add_checkbutton(label="Price Channel", variable=PriceChannelShow, onvalue=1, offvalue=0, command=lambda:showIndicator('PriceChannelShow'))
 viewMenu.add_checkbutton(label="RSI",variable = RSIshow, onvalue=1, offvalue=0, command=lambda:showIndicator('RSIshow'))
-#------END----MENU---------
+#---END---MENU----------------------
 time_var = StringVar()
 label = Label(f, textvariable=time_var, justify= LEFT, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
 chartX = 650
@@ -71,8 +86,8 @@ canv = Canvas(f, width=chartX, height=chartY, bg="Black", borderwidth=0)
 text1=Text(f, font='Courier 9', wrap=WORD, borderwidth=1, bg="Black", fg="#00B000", exportselection=0)
 text1.insert(1.0, time.strftime(" [%H:%M:%S] Start\n"))
 
-statusBarText = "statusBarText"
-statusBar = Label(f, text=statusBarText ,font="Courier 9", bg="Black", fg="#00B000", bd=1, relief=SUNKEN, anchor=W)
+statusBarText = StringVar()
+statusBar = Label(f, textvariable=statusBarText ,font="Courier 9", bg="Black", fg="#00B000", bd=1, relief=SUNKEN, anchor=W)
 statusBar.pack(side = "bottom",fill=X)  
 
 canv.pack()
@@ -80,7 +95,8 @@ canv.pack()
 label.pack(side="left", anchor=NW, padx=0)
 text1.pack(side="top", fill=X)
 
-def about(): # Меню About
+#---MENU---About
+def about():
   winAbout = Toplevel()
   winAbout.title("About")
   winAbout.geometry('470x160+100+100') # ширина=500, высота=400, x=300, y=200
@@ -123,7 +139,11 @@ def chartNew():
   """ Получить график цены """
   global chart
   
-  chart_New = polo.returnChartData(currencyPair=pair, period=timeframe, start=int(time.time()-3600*24*2) ) # История Чарта за ...    
+  numberMustCandel = chartX//50*(50/zoomX) + max([NSMA,NPriceChannel,NRSI]) 
+  numberCandelInDay = 86400 / timeFrame
+  mustDay = numberMustCandel // numberCandelInDay + 1
+  
+  chart_New = polo.returnChartData(currencyPair=pair, period=timeFrame, start=int(time.time()-3600*24*mustDay) ) # История Чарта за ...    
   if chart_New != -1:  chart = chart_New  
   #elif chart_New == -1: time.sleep(0.15); chartNew()
   return 
@@ -195,19 +215,20 @@ def tick():
   ### ОТРИСОВИ
   #### отрисовка цены на графике
   delta24 = high - low
-  for i in range(1,len(chart) -NPriceChannel - 1 ):   
+
+  for i in range(1,len(chart) ):   #-NPriceChannel - 1
     canv.create_line(600 -i*zoomX, (high - float(chart[-i]['close']))/ (delta24/(chartY-RSIY)) 
                     ,600 -(i+1)*zoomX,(high - float(chart[-i-1]['close']))/ (delta24/(chartY-RSIY)),width=1,fill="#00B000" )
   ### end
 
-  #### Отрисовка средней скользящей      
-    if configure['SMAshow'] == True :
+  #### Отрисовка SMA средней скользящей      
+    if configure['SMAshow'] == True and i < len(chart) - NSMA:
       canv.create_line(600 -i*zoomX, (high - float(SMA(NSMA,chart,-i)))/ (delta24/(chartY-RSIY)) 
                     ,600 -(i+1)*zoomX,(high - float(SMA(NSMA,chart,-i-1)))/ (delta24/(chartY-RSIY)),width=1,fill="#FF6A00",dash=1 ) # SMA отрисовка 
   ### end  
 
   ### Отрисовка Price Channel
-    if configure['PriceChannelShow'] == True:
+    if configure['PriceChannelShow'] == True and i < len(chart) - NPriceChannel :
     #Нижняя линия
       canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['lowPrice']))/ (delta24/(chartY-RSIY)) 
                     ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['lowPrice']))/ (delta24/(chartY-RSIY)),width=1,fill="#0094FF",dash=1 ) 
@@ -218,9 +239,9 @@ def tick():
       canv.create_line(600 -i*zoomX, (high - float(PiceChannel(NPriceChannel,chart,-i)['highPrice']))/ (delta24/(chartY-RSIY)) 
                     ,600 -(i+1)*zoomX,(high - float(PiceChannel(NPriceChannel,chart,-i-1)['highPrice']))/ (delta24/(chartY-RSIY)),width=1,fill="#0094FF",dash=1 )     
   ### Отрисовка RSI 
-    if configure['RSIshow'] == True:       
-      canv.create_line(600 -i*zoomX, chartY-RSI(14,chart,-i) ,
-                        600 -(i+1)*zoomX, chartY-RSI(14,chart,-i-1),width=1,fill="Slate Gray" )
+    if configure['RSIshow'] == True  and i < len(chart) - NRSI :       
+      canv.create_line(600 -i*zoomX, chartY-RSI(NRSI,chart,-i) ,
+                        600 -(i+1)*zoomX, chartY-RSI(NRSI,chart,-i-1),width=1,fill="Slate Gray" )
       canv.create_line(0,chartY-RSIchartLine[0], 650,chartY-RSIchartLine[0], width=1, fill="Slate Gray", dash=1 )
       canv.create_line(0,chartY-RSIchartLine[1], 650,chartY-RSIchartLine[1], width=1, fill="Slate Gray", dash=1 )       
   ### end 
@@ -237,7 +258,7 @@ def tick():
       orderbuy = polo.buy(pair, lowestAsk , 103)
       text1.insert(1.0, time.strftime(" [%H:%M:%S] "+str(orderbuy)+"\n"))
   """
-  RSIcurrent = RSI(14,chart)  
+  RSIcurrent = RSI(NRSI,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
   if  RSIcurrent < 80 and float(Balances['USDT']) > configure['lot'] :    
     if configure['count'] == 0:     # первый вход
@@ -274,19 +295,17 @@ def tick():
   if configure['RSIshow'] == True:       
     canv.create_text(640, chartY-100+RSIchartLine[0]-7, text=100-RSIchartLine[0]  ,fill="Slate Gray" )
     canv.create_text(640, chartY-100+RSIchartLine[1]+7, text=100-RSIchartLine[1]  ,fill="Slate Gray" )
-    canv.create_text(50, chartY-10, text="RSI ("+str(14)+"): {:2.4f}".format(RSIcurrent) ,fill="Slate Gray" )  
+    canv.create_text(50, chartY-10, text="RSI ("+str(NRSI)+"): {:2.4f}".format(RSIcurrent) ,fill="Slate Gray" )  
     canv.create_line(0,chartY-RSIY, 650, chartY-RSIY, width=2, fill="White" )       
   if configure['SMAshow'] == True: canv.create_text(60,chartY-RSIY-25,text= "SMA ("+str(NSMA)+"): {:.8f}".format(SMA(NSMA,chart)) ,fill="#FF6A00" )
   if configure['PriceChannelShow'] == True: canv.create_text(85,chartY-RSIY-10,text="PriceChannel (" + str(NPriceChannel) + "): {:.8f}".format(PiceChannel(NPriceChannel,chart)['centerLine']) ,fill="#0094FF" )
   
   RSIchartLine[0]  
   
-  time_var.set("TF    : {:.0f}".format(timeframe/60)+ " min"+                
+  time_var.set("TF    : {:.0f}".format(timeFrame/60)+ " min"+                
                "\nBUY   :\t{:.8f} ".format(lowestAsk) + 
-  	           "\nSELL  :\t{:.8f} ".format(highestBid) + 
-               "\nRefresh: " + time.strftime("%H:%M:%S") +
-               "\nQeueu : {:.0f}".format(q.qsize()) )
-
+  	           "\nSELL  :\t{:.8f} ".format(highestBid))
+  statusBarText.set("Refresh: " + time.strftime("%H:%M:%S") + " | Qeueu : {:.0f}".format(q.qsize()) )
   root.after(5000, tick)  # следующий tick через 5 с
 
 mainThread = threading.Thread(target=mainThread, name='mainThiredAliceBot').start()

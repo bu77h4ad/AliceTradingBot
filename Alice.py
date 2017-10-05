@@ -38,7 +38,8 @@ root.geometry('650x500+100+100') # ширина, высота, x=300, y=200
 root.iconbitmap(default='chart.ico')
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
-#---MENU--------------------------------
+
+#---MENU-------------------------------- 
 def showIndicator(indicator):
   if configure[indicator] == 1 : configure[indicator] = 0
   else: configure[indicator] = 1      
@@ -99,7 +100,9 @@ text1.pack(side="top", fill=X)
 def about():
   winAbout = Toplevel()
   winAbout.title("About")
-  winAbout.geometry('470x160+100+100') # ширина=500, высота=400, x=300, y=200
+  x = (winAbout.winfo_screenwidth() - 470) / 2
+  y = (winAbout.winfo_screenheight() - 160) / 2  
+  winAbout.wm_geometry('470x160+%d+%d'% (x, y)) # ширина=500, высота=400, x=300, y=200
   winAbout.iconbitmap(default='chart.ico')
   winAbout.resizable(False, False) # размер окна не может быть изменён 
   winAbout["bg"] = "Black"

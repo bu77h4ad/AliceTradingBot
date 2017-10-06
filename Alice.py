@@ -9,6 +9,15 @@ import os
 from API_KEY import *
 import queue
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 f = open('Configure.ini','r')
 configure = json.load(f)
 f.close
@@ -30,12 +39,14 @@ NPriceChannel = configure['PriceChannelPeriod']
 NRSI= configure['RSIperiod']
 zoomX = 5
 timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
-
+#---Сборка Главного Окна
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
 root.title("Alice Trading Bot")
 root.geometry('650x500+100+100') # ширина, высота, x=300, y=200
-root.iconbitmap(default='chart.ico')
+
+image_path = resource_path("chart.ico")
+root.iconbitmap(image_path)
 root.resizable(False, False) # размер окна не может быть изменён 
 root.config(menu=m) #окно конфигурируется с указанием меню для него
 
@@ -103,7 +114,7 @@ def about():
   x = (winAbout.winfo_screenwidth() - 470) / 2
   y = (winAbout.winfo_screenheight() - 160) / 2  
   winAbout.wm_geometry('470x160+%d+%d'% (x, y)) # ширина=500, высота=400, x=300, y=200
-  winAbout.iconbitmap(default='chart.ico')
+  winAbout.iconbitmap(image_path)
   winAbout.resizable(False, False) # размер окна не может быть изменён 
   winAbout["bg"] = "Black"
     

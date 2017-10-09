@@ -2,11 +2,11 @@ import json
 import datetime
 import threading
 from tkinter import *
+from tkinter.messagebox import *
 import time
 from indicators import *
 from APIpoloniex import *
 import os
-from API_KEY import *
 import queue
 
 def resource_path(relative_path):
@@ -18,16 +18,21 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-f = open('Configure.ini','r')
-configure = json.load(f)
-f.close
+# Чтение Настроек из файла
+try:
+  f = open('Configure.ini','r')
+  configure = json.load(f)
+  f.close
+except :
+  showerror("Error", "Error in reading 'Configure.ini'")  
+  quit()
 
-polo = APIpoloniex(api_key, api_secret, 1.0)
+polo = APIpoloniex(configure['api_key'], configure['api_secret'], 1.0)
 q = queue.Queue() # Экземпляр класса, очередь
 
 ###Глобальные переменные
 _mainThreadStop = False
-pair = 'USDT_LTC'
+pair = configure['pair']
 Balances = -1
 RSIchartLine = [30,70] #горизонтальные линии на графике
 TradeHistory = -1
@@ -42,8 +47,8 @@ timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
 #---Сборка Главного Окна
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
-root.title("Alice Trading Bot")
-root.geometry('650x500+100+100') # ширина, высота, x=300, y=200
+root.title("Alice Trading Bot 20171009 beta")
+root.geometry('650x550+100+100') # ширина, высота, x=300, y=200
 
 image_path = resource_path("chart.ico")
 root.iconbitmap(image_path)
@@ -63,7 +68,7 @@ def timeFrameSet(n):
 
 fileMenu = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
 m.add_cascade(label="File", menu=fileMenu) #пункту располагается на основном меню (m)
-fileMenu.add_command(label="Open...", command = '') #формируется список команд пункта меню
+#fileMenu.add_command(label="Open...", command = '') #формируется список команд пункта меню
 fileMenu.add_command(label="Exit", command = root.quit) #формируется список команд пункта меню
 
 #---MENU---VIEW---------------------      
@@ -89,8 +94,8 @@ viewMenu.add_checkbutton(label="SMA", variable=SMAshow, onvalue=1, offvalue=0, c
 viewMenu.add_checkbutton(label="Price Channel", variable=PriceChannelShow, onvalue=1, offvalue=0, command=lambda:showIndicator('PriceChannelShow'))
 viewMenu.add_checkbutton(label="RSI",variable = RSIshow, onvalue=1, offvalue=0, command=lambda:showIndicator('RSIshow'))
 #---END---MENU----------------------
-time_var = StringVar()
-label = Label(f, textvariable=time_var, justify= LEFT, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
+#time_var = StringVar()
+#label = Label(f, textvariable=time_var, justify= LEFT, font="Courier 9", bg="Black", fg="#00B000",borderwidth = 0)
 chartX = 650
 chartY = 400
 canv = Canvas(f, width=chartX, height=chartY, bg="Black", borderwidth=0)
@@ -104,28 +109,29 @@ statusBar.pack(side = "bottom",fill=X)
 
 canv.pack()
 
-label.pack(side="left", anchor=NW, padx=0)
+#label.pack(side="left", anchor=NW, padx=0)
 text1.pack(side="top", fill=X)
 
 #---MENU---About
 def about():
   winAbout = Toplevel()
   winAbout.title("About")
-  x = (winAbout.winfo_screenwidth() - 470) / 2
-  y = (winAbout.winfo_screenheight() - 160) / 2  
-  winAbout.wm_geometry('470x160+%d+%d'% (x, y)) # ширина=500, высота=400, x=300, y=200
+  x = (winAbout.winfo_screenwidth() /2 - winAbout.winfo_reqwidth())
+  y = (winAbout.winfo_screenheight()/2 - winAbout.winfo_reqheight()) 
+  winAbout.wm_geometry('470x170+%d+%d'% (x, y)) # ширина=500, высота=400, x=300, y=200
   winAbout.iconbitmap(image_path)
   winAbout.resizable(False, False) # размер окна не может быть изменён 
   winAbout["bg"] = "Black"
     
-  winAbout.txt=Text(winAbout, height=8, width=7, borderwidth =0, font='Arial 9',bg = "Black" , fg="#00B000",wrap=WORD)
+  winAbout.txt=Text(winAbout, height=9, width=7, borderwidth =0, font='Arial 9',bg = "Black" , fg="#00B000",wrap=WORD)
   txt = "DONATIONS: \n\
   BTC fb0a34933ca0781f5e9917a52ea86d72cbb1c05b4ccfff56f9c78bdce5f8a573\n\
   LTC LRsm54XYJxG7NJCuAntK98odJoXhwp1GBK\n\
   ETH 0x8750793385349e2edd63e87d5c523b3b2c972b82\n\
   ZEC t1TW9tC321fZyDQRX4spzpxar1hRBcBHU6S\n\n\
 CONTACT:\n\
-  Telegram: bu77h4ad"
+  Telegram: bu77h4ad\n\
+  VK: vk.com/alicetradingbot"
   winAbout.txt.insert('end', txt)
   winAbout.txt.configure(state=DISABLED)
   winAbout.txt.pack(fill="both")
@@ -147,7 +153,7 @@ def stepNew():
     i+=1
   configure['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
   if configure['step'] < 1.0 : configure['step'] = 1.0
-  print (time.strftime("%H:%M:%S"),'step =', configure['step'], 'max. count bet =', i) 
+  text1.insert(1.0, time.strftime(" [%H:%M:%S] " + ' step = ' + configure['step'] + ' max. count bet = ' +  str(i) +" \n"))  
 
 def chartNew():     
   """ Получить график цены """
@@ -188,8 +194,12 @@ def mainThread():
      except : # на случай ошибок или пустой очереди sys.exc_info()[0]
       pass
      else :   # если нет ошибок
-      if element['event'] == 'BUY': orderBuy = polo.buy(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"), element['rate'] , element['amount'] , orderBuy)
-      if element['event'] == 'SELL': orderSell = polo.sell(element['pair'], element['rate'] , element['amount']); print (time.strftime("%H:%M:%S"),  element['rate'] , element['amount'], orderSell)
+      if element['event'] == 'BUY' : 
+        orderBuy  = polo.buy (element['pair'], element['rate'], element['amount'], timeOutSec = 3)
+        text1.insert(1.0, time.strftime(" [%H:%M:%S] BUY price: " + element['rate'] +  "amount: "+ element['amount']+ " | Return Poloniex: "+ orderBuy + " \n"))
+      if element['event'] == 'SELL': 
+        orderSell = polo.sell(element['pair'], element['rate'], element['amount'], timeOutSec = 3)         
+        text1.insert(1.0, time.strftime(" [%H:%M:%S] SELL price: " + element['rate'] +  "amount: "+ element['amount']+ " | Return Poloniex: "+ orderSell + " \n"))
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
@@ -296,7 +306,7 @@ def tick():
         #print(currentDT,'buy', 'orderBuy', pair, lowestAsk , (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk )                          
         
   #ПРОДАЖА  
-  if (highestBid > configure['bet'][configure['count'] -2 ] and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['step']):    
+  if (highestBid > configure['bet'][configure['count'] -2 ] +  (configure['bet'][0] / 1000 * configure['count']) and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['step']):    
     q.put({'event': 'SELL', 'pair' : pair, 'rate' : highestBid, 'amount' : Balances['LTC']})
     #orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
     #print (currentDT, 'SELL','orderSell',pair, highestBid, Balances['LTC']  )    
@@ -316,10 +326,7 @@ def tick():
   
   RSIchartLine[0]  
   
-  time_var.set("TF    : {:.0f}".format(timeFrame/60)+ " min"+                
-               "\nBUY   :\t{:.8f} ".format(lowestAsk) + 
-  	           "\nSELL  :\t{:.8f} ".format(highestBid))
-  statusBarText.set("Refresh: " + time.strftime("%H:%M:%S") + " | Qeueu : {:.0f}".format(q.qsize()) )
+  statusBarText.set("TF : {:.0f}".format(timeFrame/60)+ " min" + " | Qeueu : {:.0f}".format(q.qsize()) + " | "+ "BUY  : {:.8f}".format(lowestAsk) + " | " + "SELL : {:.8f}".format(highestBid) + " | " +  "Refresh: " + time.strftime("%H:%M:%S")) 
   root.after(5000, tick)  # следующий tick через 5 с
 
 mainThread = threading.Thread(target=mainThread, name='mainThiredAliceBot').start()

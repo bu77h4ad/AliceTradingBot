@@ -63,7 +63,7 @@ def showIndicator(indicator):
 def timeFrameSet(n):
   global timeFrame 
   timeFrame=n                 # Для чарта
-  timeFrameVar.set(n)         # для кректной работы галочек
+  timeFrameVar.set(n)         # для корректной работы галочек
   configure['timeFrame'] = n  # длязаписи в конфиг
 
 fileMenu = Menu(m, tearoff=0) #создается пункт меню с размещением на основном меню (m)
@@ -152,8 +152,8 @@ def stepNew():
     sum += sum * configure['coefficient']
     i+=1
   configure['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
-  if configure['step'] < 1.0 : configure['step'] = 1.0
-  text1.insert(1.0, time.strftime(" [%H:%M:%S] " + ' step = ' + configure['step'] + ' max. count bet = ' +  str(i) +" \n"))  
+  if configure['step'] < 1.5 : configure['step'] = 1.5
+  text1.insert(1.0, time.strftime("[%H:%M:%S] " + ' step = ' + str(configure['step']) + ' max. count bet = ' +  str(i) +" \n"))  
 
 def chartNew():     
   """ Получить график цены """
@@ -196,15 +196,15 @@ def mainThread():
      else :   # если нет ошибок
       if element['event'] == 'BUY' : 
         orderBuy  = polo.buy (element['pair'], element['rate'], element['amount'], timeOutSec = 3)
-        text1.insert(1.0, time.strftime(" [%H:%M:%S] BUY price: " + element['rate'] +  "amount: "+ element['amount']+ " | Return Poloniex: "+ orderBuy + " \n"))
+        text1.insert(1.0, time.strftime("[%H:%M:%S] BUY price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str(orderBuy) + " \n"))
       if element['event'] == 'SELL': 
         orderSell = polo.sell(element['pair'], element['rate'], element['amount'], timeOutSec = 3)         
-        text1.insert(1.0, time.strftime(" [%H:%M:%S] SELL price: " + element['rate'] +  "amount: "+ element['amount']+ " | Return Poloniex: "+ orderSell + " \n"))
+        text1.insert(1.0, time.strftime("[%H:%M:%S] SELL price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str(orderSell) + " \n"))
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
       if element['event'] == 'stepNew': stepNew()
-     time.sleep(0.1)
+     time.sleep(0.1) 
 
 def tick():
   """ Отрисовка окна окна и принятие решений по торговле """  
@@ -284,7 +284,7 @@ def tick():
   """
   RSIcurrent = RSI(NRSI,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
-  if  RSIcurrent < 80 and float(Balances['USDT']) > configure['lot'] :    
+  if  RSIcurrent < 50 and float(Balances['USDT']) > configure['lot'] :    
     if configure['count'] == 0:     # первый вход
       #configure['bet'][0] = lowestAsk
       configure['count'] +=1          

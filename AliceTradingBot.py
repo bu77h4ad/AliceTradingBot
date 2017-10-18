@@ -24,7 +24,7 @@ try:
   configure = json.load(f)
   f.close
 except :
-  showerror("Error", "Error in reading 'Configure.ini'")  
+  showerror("Error", "Error in reading 'Configure.ini'\n" + str (sys.exc_info()[1]) )
   quit()
 
 polo = APIpoloniex(configure['api_key'], configure['api_secret'], 1.0)
@@ -47,7 +47,7 @@ timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
 #---Сборка Главного Окна
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
-root.title("Alice Trading Bot 20171009 beta")
+root.title("Alice Trading Bot 20171017 beta")
 root.geometry('650x550+100+100') # ширина, высота, x=300, y=200
 
 image_path = resource_path("chart.ico")
@@ -101,7 +101,7 @@ chartY = 400
 canv = Canvas(f, width=chartX, height=chartY, bg="Black", borderwidth=0)
 
 text1=Text(f, font='Courier 9', wrap=WORD, borderwidth=1, bg="Black", fg="#00B000", exportselection=0)
-text1.insert(1.0, time.strftime(" [%H:%M:%S] Start\n"))
+text1.insert(1.0, time.strftime("[%H:%M:%S] Start\n"))
 
 statusBarText = StringVar()
 statusBar = Label(f, textvariable=statusBarText ,font="Courier 9", bg="Black", fg="#00B000", bd=1, relief=SUNKEN, anchor=W)
@@ -114,6 +114,7 @@ text1.pack(side="top", fill=X)
 
 #---MENU---About
 def about():
+  """ Окно ABOUT """
   winAbout = Toplevel()
   winAbout.title("About")
   x = (winAbout.winfo_screenwidth() /2 - winAbout.winfo_reqwidth())
@@ -147,13 +148,14 @@ def stepNew():
       шаг = изменение цены за сутки / макимальное количество ставок
   """
   sum = configure['lot']
-  i=0
-  while sum < float (Balances['USDT']):
+  i=0  
+  while sum < float (Balances[str(configure['pair']).split('_')[0]]):
     sum += sum * configure['coefficient']
     i+=1
-  configure['step'] = (float (current['high24hr']) - float(current['low24hr'])) / i
-  if configure['step'] < 1.5 : configure['step'] = 1.5
-  text1.insert(1.0, time.strftime("[%H:%M:%S] " + ' step = ' + str(configure['step']) + ' max. count bet = ' +  str(i) +" \n"))  
+  stepAuto = (float (current['high24hr']) - float(current['low24hr'])) / i
+  if configure['stepMin'] < stepAuto : configure['stepNow'] = stepAuto 
+  else : configure['stepNow'] = configure['stepMin']
+  text1.insert(1.0, time.strftime("[%H:%M:%S] " + 'step = ' + str(configure['stepNow']) + ' max. count bet = ' +  str(i) +" \n"))  
 
 def chartNew():     
   """ Получить график цены """
@@ -284,7 +286,7 @@ def tick():
   """
   RSIcurrent = RSI(NRSI,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
-  if  RSIcurrent < 50 and float(Balances['USDT']) > configure['lot'] :    
+  if  RSIcurrent < 70 and float(Balances['USDT']) > configure['lot'] :    
     if configure['count'] == 0:     # первый вход
       #configure['bet'][0] = lowestAsk
       configure['count'] +=1          
@@ -295,7 +297,7 @@ def tick():
       #for i in range(1,49):
       #  configure['bet'][i] = lowestAsk  - lowestAsk / 100 * i * configure['step'] 
       configure['bet'].clear
-      configure['bet'] = [ lowestAsk  - lowestAsk / 100 * x * configure['step'] for x in range(0, round(100 / configure['step']))] 
+      configure['bet'] = [ lowestAsk  - lowestAsk / 100 * x * configure['stepNow'] for x in range(0, round(100 / configure['stepNow']))] 
 
     else : # Второй вход и последующее и хватает ли депозита
       if lowestAsk < configure['bet'][configure['count']] and float(Balances['USDT']) > (configure['coefficient']**(configure['count']-1)) * configure['lot'] :
@@ -306,7 +308,7 @@ def tick():
         #print(currentDT,'buy', 'orderBuy', pair, lowestAsk , (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk )                          
         
   #ПРОДАЖА  
-  if (highestBid > configure['bet'][configure['count'] -2 ] +  (configure['bet'][0] / 1000 * configure['count']) and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['step']):    
+  if (highestBid > configure['bet'][configure['count'] -2 ] +  (configure['bet'][0] / 1000 * configure['count']) and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['stepNow']):    
     q.put({'event': 'SELL', 'pair' : pair, 'rate' : highestBid, 'amount' : Balances['LTC']})
     #orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
     #print (currentDT, 'SELL','orderSell',pair, highestBid, Balances['LTC']  )    
@@ -315,7 +317,7 @@ def tick():
   f = open('Configure.ini','w')
   json.dump(configure, f, sort_keys = True, indent = 3)
   f.close
-    
+  
   if configure['RSIshow'] == True:       
     canv.create_text(640, chartY-100+RSIchartLine[0]-7, text=100-RSIchartLine[0]  ,fill="Slate Gray" )
     canv.create_text(640, chartY-100+RSIchartLine[1]+7, text=100-RSIchartLine[1]  ,fill="Slate Gray" )

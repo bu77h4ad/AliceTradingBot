@@ -47,7 +47,7 @@ timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
 #---Сборка Главного Окна
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
-root.title("Alice Trading Bot 20171017 beta")
+root.title("Alice Trading Bot 20171026 beta")
 root.geometry('650x550+100+100') # ширина, высота, x=300, y=200
 
 image_path = resource_path("chart.ico")
@@ -101,7 +101,9 @@ chartY = 400
 canv = Canvas(f, width=chartX, height=chartY, bg="Black", borderwidth=0)
 
 text1=Text(f, font='Courier 9', wrap=WORD, borderwidth=1, bg="Black", fg="#00B000", exportselection=0)
-text1.insert(1.0, time.strftime("[%H:%M:%S] Start\n"))
+text1.insert(1.0, time.strftime("[%H:%M:%S] Loading ... \n"))
+text1.insert(1.0, time.strftime("[%H:%M:%S] Chosen pair : " + configure['pair'] + "\n"))
+text1.insert(1.0, time.strftime("[%H:%M:%S] Chosen Time Frame : " + str(configure['timeFrame'] / 60) + " min\n"))
 
 statusBarText = StringVar()
 statusBar = Label(f, textvariable=statusBarText ,font="Courier 9", bg="Black", fg="#00B000", bd=1, relief=SUNKEN, anchor=W)
@@ -152,7 +154,7 @@ def stepNew():
   while sum < float (Balances[str(configure['pair']).split('_')[0]]):
     sum += sum * configure['coefficient']
     i+=1
-  stepAuto = (float (current['high24hr']) - float(current['low24hr'])) / i
+  stepAuto = ((float (current['high24hr']) - float(current['low24hr'])) / i) / (float (current['lowestAsk'] ) / 100 )
   if configure['stepMin'] < stepAuto : configure['stepNow'] = stepAuto 
   else : configure['stepNow'] = configure['stepMin']
   text1.insert(1.0, time.strftime("[%H:%M:%S] " + 'step = ' + str(configure['stepNow']) + ' max. count bet = ' +  str(i) +" \n"))  
@@ -198,10 +200,10 @@ def mainThread():
      else :   # если нет ошибок
       if element['event'] == 'BUY' : 
         orderBuy  = polo.buy (element['pair'], element['rate'], element['amount'], timeOutSec = 3)
-        text1.insert(1.0, time.strftime("[%H:%M:%S] BUY price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str(orderBuy) + " \n"))
+        text1.insert(1.0, time.strftime("[%H:%M:%S] BUY price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str('orderBuy') + " \n"))
       if element['event'] == 'SELL': 
         orderSell = polo.sell(element['pair'], element['rate'], element['amount'], timeOutSec = 3)         
-        text1.insert(1.0, time.strftime("[%H:%M:%S] SELL price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str(orderSell) + " \n"))
+        text1.insert(1.0, time.strftime("[%H:%M:%S] SELL price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str('orderSell') + " \n"))
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
@@ -216,8 +218,13 @@ def tick():
   q.put({'event':'chartNew'})
 
   #на первое включение
-  while (Balances == -1 or current == -1 or chart == -1 )  :time.sleep(1.5); chartNew(); BalancesNew(); currentTickerNew();
-
+  while (Balances == -1 or current == -1 or chart == -1 ):
+    time.sleep(1.5); 
+    chartNew(); 
+    BalancesNew(); 
+    currentTickerNew(); 
+    if (Balances != -1 or current != -1 or chart != -1 ):  text1.insert(1.0, time.strftime("[%H:%M:%S] loading is complete\n"));
+  
   lowestAsk =  float(current['lowestAsk'])    # могу купить
   highestBid = float(current['highestBid'])   # могу продать
     
@@ -286,7 +293,7 @@ def tick():
   """
   RSIcurrent = RSI(NRSI,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
-  if  RSIcurrent < 70 and float(Balances['USDT']) > configure['lot'] :    
+  if  RSIcurrent < 30 and float(Balances['USDT']) > configure['lot'] :    
     if configure['count'] == 0:     # первый вход
       #configure['bet'][0] = lowestAsk
       configure['count'] +=1          

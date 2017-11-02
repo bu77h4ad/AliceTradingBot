@@ -3,4 +3,4 @@ community https://vk.com/alicetradingbot
 
 download https://yadi.sk/d/yJka7xMk3Nr324
 
-![alt text](Cover.jpg)
+![alt text](Cover.png)

@@ -47,7 +47,7 @@ timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
 #---Сборка Главного Окна
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
-root.title("Alice Trading Bot 20171026 beta")
+root.title("Alice Trading Bot 20171122 beta")
 root.geometry('650x650+100+100') # ширина, высота, x=300, y=200
 
 image_path = resource_path("chart.ico")
@@ -118,7 +118,7 @@ def settings ():
     winSettings = Toplevel()
     winSettings.title("Setting")
     winSettings.geometry('345x240+100+100') # ширина=500, высота=400, x=300, y=200
-    winSettings.iconbitmap(default='chart.ico')
+    winSettings.iconbitmap(image_path)
     winSettings.resizable(False, False) # размер окна не может быть изменён 
     winSettings["bg"] = "Black"
     
@@ -132,35 +132,46 @@ def settings ():
 
     entryText1 = StringVar()
     e1 = Entry(winSettings, font='Courier 9', textvariable=entryText1 , bg = "Black", fg="#00B000", width = 35 ).grid(row=0, column=1,sticky=W)
-    entryText1.set( "VVLS51VT-UBWBOIYR-IQFAN0TF-2P35T4CE" )
+    entryText1.set( configure['api_key'] )
   
     text2 = Text(winSettings, font='Courier 9', wrap=WORD, borderwidth=1, bg="Black", fg="#00B000", exportselection=0, height=4, width=35 )
-    text2.insert(1.0,"ba4f7ac5cdf37989e5e95b89682851ca84a4f5de06caa760fbce662a08b8e20943d73bd25edfaa5618ec23e75733a3d01151f34c81aaf50d017337c1ca21b764")
+    text2.insert(1.0, configure['api_secret'])
     text2.grid(row=1, column=1,sticky=W)
 
     entryText3 = StringVar()
     e3 = Entry(winSettings, textvariable=entryText3, bg = "Black", fg="#00B000").grid(row=2, column=1,sticky=W)
-    entryText3.set( "30" )
+    entryText3.set(  configure['RSIbuyLevel'] )
 
     entryText4 = StringVar()
     e3 = Entry(winSettings, textvariable=entryText4, bg = "Black", fg="#00B000").grid(row=3, column=1,sticky=W)
-    entryText4.set( "USDT_LTC" )
+    entryText4.set( configure['pair'] )
 
     entryText5 = StringVar()
     e3 = Entry(winSettings, textvariable=entryText5, bg = "Black", fg="#00B000").grid(row=4, column=1,sticky=W)
-    entryText5.set( "2.5" )
+    entryText5.set( configure['coefficient'] )
 
     entryText6 = StringVar()
     e3 = Entry(winSettings, textvariable=entryText6, bg = "Black", fg="#00B000").grid(row=5, column=1,sticky=W)
-    entryText6.set( "0.70111" )
+    entryText6.set( configure['lot'] )
 
     entryText7 = StringVar()
     e3 = Entry(winSettings, textvariable=entryText7, bg = "Black", fg="#00B000").grid(row=6, column=1,sticky=W)
-    entryText7.set( "1" )
+    entryText7.set( configure['stepMin'] )
 
-    winSettings.but = Button(winSettings, text = 'Ok',relief="groove",bd=1, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winSettings.destroy ).grid(row=99, column=1, pady=14,sticky=W)    
+    winSettings.but = Button(winSettings, text = 'SAVE',relief="groove",bd=1, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = lambda :winSettingsSave(entryText1.get(), text2.get(1.0, END), entryText3.get(), entryText4.get(), entryText5.get(), entryText6.get(), entryText7.get() ) )
+    winSettings.but.grid(row=99, column=1, pady=14,sticky=W)    
     winSettings.mainloop()
 m.add_command(label="Settings", command = settings) #формируется список команд пункта меню
+
+def winSettingsSave(entryText1, Text2, entryText3, entryText4, entryText5, entryText6, entryText7 ):  
+  global configure
+  configure['api_key']     = entryText1 
+  configure['api_secret']  = Text2.strip()
+  configure['RSIbuyLevel'] = float (entryText3)
+  configure['pair']        = entryText4
+  configure['coefficient'] = float (entryText5)
+  configure['lot']         = float (entryText6)
+  configure['stepMin']     = float (entryText7)
 
 def about():
   """ Окно ABOUT """

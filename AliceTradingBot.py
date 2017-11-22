@@ -48,7 +48,7 @@ timeFrame = configure['timeFrame'] #300-5min 900-15min 1800-30min 7200-2hour
 root = Tk(); f = Frame(bg="Black"); f.pack(fill="both")
 m = Menu(root) #создается объект Меню на главном окне
 root.title("Alice Trading Bot 20171026 beta")
-root.geometry('650x550+100+100') # ширина, высота, x=300, y=200
+root.geometry('650x650+100+100') # ширина, высота, x=300, y=200
 
 image_path = resource_path("chart.ico")
 root.iconbitmap(image_path)
@@ -114,7 +114,54 @@ canv.pack()
 #label.pack(side="left", anchor=NW, padx=0)
 text1.pack(side="top", fill=X)
 
-#---MENU---About
+def settings ():
+    winSettings = Toplevel()
+    winSettings.title("Setting")
+    winSettings.geometry('345x240+100+100') # ширина=500, высота=400, x=300, y=200
+    winSettings.iconbitmap(default='chart.ico')
+    winSettings.resizable(False, False) # размер окна не может быть изменён 
+    winSettings["bg"] = "Black"
+    
+    Label(winSettings, text="api_key", bg = "Black", fg="#00B000" ).grid(row=0,sticky=W)
+    Label(winSettings, text="api_secret", bg = "Black", fg="#00B000" ).grid(row=1,sticky=W)
+    Label(winSettings, text="buy at RSI below", bg = "Black", fg="#00B000" ).grid(row=2,sticky=W)
+    Label(winSettings, text="pair", bg = "Black", fg="#00B000" ).grid(row=3,sticky=W)
+    Label(winSettings, text="coefficient %", bg = "Black", fg="#00B000" ).grid(row=4,sticky=W)
+    Label(winSettings, text="lot (USDT)", bg = "Black", fg="#00B000" ).grid(row=5,sticky=W)
+    Label(winSettings, text="stepMin %", bg = "Black", fg="#00B000" ).grid(row=6,sticky=W)
+
+    entryText1 = StringVar()
+    e1 = Entry(winSettings, font='Courier 9', textvariable=entryText1 , bg = "Black", fg="#00B000", width = 35 ).grid(row=0, column=1,sticky=W)
+    entryText1.set( "VVLS51VT-UBWBOIYR-IQFAN0TF-2P35T4CE" )
+  
+    text2 = Text(winSettings, font='Courier 9', wrap=WORD, borderwidth=1, bg="Black", fg="#00B000", exportselection=0, height=4, width=35 )
+    text2.insert(1.0,"ba4f7ac5cdf37989e5e95b89682851ca84a4f5de06caa760fbce662a08b8e20943d73bd25edfaa5618ec23e75733a3d01151f34c81aaf50d017337c1ca21b764")
+    text2.grid(row=1, column=1,sticky=W)
+
+    entryText3 = StringVar()
+    e3 = Entry(winSettings, textvariable=entryText3, bg = "Black", fg="#00B000").grid(row=2, column=1,sticky=W)
+    entryText3.set( "30" )
+
+    entryText4 = StringVar()
+    e3 = Entry(winSettings, textvariable=entryText4, bg = "Black", fg="#00B000").grid(row=3, column=1,sticky=W)
+    entryText4.set( "USDT_LTC" )
+
+    entryText5 = StringVar()
+    e3 = Entry(winSettings, textvariable=entryText5, bg = "Black", fg="#00B000").grid(row=4, column=1,sticky=W)
+    entryText5.set( "2.5" )
+
+    entryText6 = StringVar()
+    e3 = Entry(winSettings, textvariable=entryText6, bg = "Black", fg="#00B000").grid(row=5, column=1,sticky=W)
+    entryText6.set( "0.70111" )
+
+    entryText7 = StringVar()
+    e3 = Entry(winSettings, textvariable=entryText7, bg = "Black", fg="#00B000").grid(row=6, column=1,sticky=W)
+    entryText7.set( "1" )
+
+    winSettings.but = Button(winSettings, text = 'Ok',relief="groove",bd=1, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = winSettings.destroy ).grid(row=99, column=1, pady=14,sticky=W)    
+    winSettings.mainloop()
+m.add_command(label="Settings", command = settings) #формируется список команд пункта меню
+
 def about():
   """ Окно ABOUT """
   winAbout = Toplevel()
@@ -158,6 +205,9 @@ def stepNew():
   if configure['stepMin'] < stepAuto : configure['stepNow'] = stepAuto 
   else : configure['stepNow'] = configure['stepMin']
   text1.insert(1.0, time.strftime("[%H:%M:%S] " + 'step = ' + str(configure['stepNow']) + ' max. count bet = ' +  str(i) +" \n"))  
+  configure['bet'].clear
+  configure['bet'] = [ float(current['lowestAsk'])  - float(current['lowestAsk']) / 100 * x * configure['stepNow'] for x in range(0, round(100 / configure['stepNow']))] 
+  print ('lowestAsk =' , current['lowestAsk'], 'stepNow = ', configure['stepNow'])
 
 def chartNew():     
   """ Получить график цены """
@@ -200,10 +250,10 @@ def mainThread():
      else :   # если нет ошибок
       if element['event'] == 'BUY' : 
         orderBuy  = polo.buy (element['pair'], element['rate'], element['amount'], timeOutSec = 3)
-        text1.insert(1.0, time.strftime("[%H:%M:%S] BUY price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str('orderBuy') + " \n"))
+        text1.insert(1.0, time.strftime("[%H:%M:%S] BUY price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str(orderBuy) + " \n\n"))
       if element['event'] == 'SELL': 
         orderSell = polo.sell(element['pair'], element['rate'], element['amount'], timeOutSec = 3)         
-        text1.insert(1.0, time.strftime("[%H:%M:%S] SELL price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str('orderSell') + " \n"))
+        text1.insert(1.0, time.strftime("[%H:%M:%S] SELL price: " + str(element['rate']) +  " amount: "+ str(element['amount'])+ " | Return Poloniex: "+ str(orderSell) + " \n\n"))
       if element['event'] == 'chartNew': chartNew()
       if element['event'] == 'BalancesNew': BalancesNew()
       if element['event'] == 'currentTickerNew': currentTickerNew()
@@ -293,7 +343,7 @@ def tick():
   """
   RSIcurrent = RSI(NRSI,chart)  
   # ПОКУПКА # RSI < 70 и хватает ли депозита
-  if  RSIcurrent < 30 and float(Balances['USDT']) > configure['lot'] :    
+  if  RSIcurrent < configure['RSIbuyLevel'] and float(Balances['USDT']) > configure['lot'] :    
     if configure['count'] == 0:     # первый вход
       #configure['bet'][0] = lowestAsk
       configure['count'] +=1          
@@ -302,9 +352,7 @@ def tick():
       #orderBuy = polo.buy(pair, lowestAsk , configure['lot'] / lowestAsk)
       #print(currentDT,'buy','orderBuy', pair, lowestAsk , configure['lot'] / lowestAsk)      
       #for i in range(1,49):
-      #  configure['bet'][i] = lowestAsk  - lowestAsk / 100 * i * configure['step'] 
-      configure['bet'].clear
-      configure['bet'] = [ lowestAsk  - lowestAsk / 100 * x * configure['stepNow'] for x in range(0, round(100 / configure['stepNow']))] 
+      #  configure['bet'][i] = lowestAsk  - lowestAsk / 100 * i * configure['step']       
 
     else : # Второй вход и последующее и хватает ли депозита
       if lowestAsk < configure['bet'][configure['count']] and float(Balances['USDT']) > (configure['coefficient']**(configure['count']-1)) * configure['lot'] :
@@ -314,8 +362,8 @@ def tick():
         q.put({'event': 'BUY', 'pair' : pair, 'rate' : lowestAsk, 'amount' : (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk })
         #print(currentDT,'buy', 'orderBuy', pair, lowestAsk , (configure['coefficient']**(configure['count']-1)) * configure['lot'] / lowestAsk )                          
         
-  #ПРОДАЖА  
-  if (highestBid > configure['bet'][configure['count'] -2 ] +  (configure['bet'][0] / 1000 * configure['count']) and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['stepNow']):    
+  #ПРОДАЖА                                                       #добавочный процент
+  if (highestBid > configure['bet'][configure['count'] -2 ] +  (configure['bet'][0] / 500 * configure['count']) and  configure['count'] >= 2) or (configure['count'] == 1  and  highestBid > configure['bet'][0] + configure['bet'][0] / 100 * configure['stepNow']):    
     q.put({'event': 'SELL', 'pair' : pair, 'rate' : highestBid, 'amount' : Balances['LTC']})
     #orderSell = polo.sell(pair, highestBid, polo.returnBalances()['LTC'])
     #print (currentDT, 'SELL','orderSell',pair, highestBid, Balances['LTC']  )    

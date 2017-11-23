@@ -158,7 +158,7 @@ def settings ():
     e3 = Entry(winSettings, textvariable=entryText7, bg = "Black", fg="#00B000").grid(row=6, column=1,sticky=W)
     entryText7.set( configure['stepMin'] )
 
-    winSettings.but = Button(winSettings, text = 'SAVE',relief="groove",bd=1, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000",command = lambda :winSettingsSave(entryText1.get(), text2.get(1.0, END), entryText3.get(), entryText4.get(), entryText5.get(), entryText6.get(), entryText7.get() ) )
+    winSettings.but = Button(winSettings, text = 'SAVE', activebackground = "#00B000" , activeforeground = "Black", relief="groove",borderwidth=2, height=1,width=5,font='Arial 9',bg = "Black" , fg="#00B000", command = lambda :winSettingsSave(entryText1.get(), text2.get(1.0, END), entryText3.get(), entryText4.get(), entryText5.get(), entryText6.get(), entryText7.get() ) )
     winSettings.but.grid(row=99, column=1, pady=14,sticky=W)    
     winSettings.mainloop()
 m.add_command(label="Settings", command = settings) #формируется список команд пункта меню
@@ -217,8 +217,7 @@ def stepNew():
   else : configure['stepNow'] = configure['stepMin']
   text1.insert(1.0, time.strftime("[%H:%M:%S] " + 'step = ' + str(configure['stepNow']) + ' max. count bet = ' +  str(i) +" \n"))  
   configure['bet'].clear
-  configure['bet'] = [ float(current['lowestAsk'])  - float(current['lowestAsk']) / 100 * x * configure['stepNow'] for x in range(0, round(100 / configure['stepNow']))] 
-  print ('lowestAsk =' , current['lowestAsk'], 'stepNow = ', configure['stepNow'])
+  configure['bet'] = [ float(current['lowestAsk'])  - float(current['lowestAsk']) / 100 * x * configure['stepNow'] for x in range(0, round(100 / configure['stepNow']))]   
 
 def chartNew():     
   """ Получить график цены """

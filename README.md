@@ -1,4 +1,6 @@
 # Alice Trading Bot by bu77h4ad :+1:
+Торговый бот для полоникс
+
 community https://vk.com/alicetradingbot
 
 download https://yadi.sk/d/yJka7xMk3Nr324
